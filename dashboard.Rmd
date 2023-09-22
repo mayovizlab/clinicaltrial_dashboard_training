@@ -1,0 +1,992 @@
+---
+title: "PROTOCOL ID - Dr. X" 
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+runtime: shiny
+---
+    
+    
+```{r setup, include=FALSE, warning=FALSE}
+
+# Flexdashboard documentation--- https://rmarkdown.rstudio.com/flexdashboard/index.html
+
+# This template is setup to include interactive Shiny elements. Examples can be in the Shiny section at https://rmarkdown.rstudio.com/flexdashboard/shiny.html#using_shiny
+
+
+
+#------------------------------ Load Packages ----------------------------------------
+library(flexdashboard)
+library(plotly)
+library(tidyverse)
+library(openxlsx)
+library(knitr)
+library(kableExtra)
+library(shiny)
+library(DT)
+library(formattable)
+library(Hmisc)
+library(arsenal)
+
+```
+
+
+```{r data, include=FALSE}
+
+#---------------------------------- Data Import ----------------------------------------
+
+# For the example we are using 
+data_import <- read.xlsx("./data/data.xlsx",sheet=1,detectDates=T)
+
+ae <- read.xlsx("./data/data.xlsx",sheet=2,detectDates=T)
+
+#data_import <- read.xlsx("/projects/ccsstat/radonc/admin/shared_code/r/templates/dashboard_rmd_flexdashboard/data/data.xlsx",sheet=1,detectDates=T)
+#ae <- read.xlsx("/projects/ccsstat/radonc/admin/shared_code/r/templates/dashboard_rmd_flexdashboard/data/data.xlsx",sheet=2,detectDates=T)
+
+
+## Here is a code example that could be used when saving the data in pin 
+# Saving your data as a pin allows you to update the data without having to republish the dashboard each time. 
+# First connect to the board/server where the data and dashboard lives
+#board3 <- pins::board_connect(server = "https://hsr-rsc-prod3.mayo.edu:1919/",
+#                             key = Sys.getenv("MOLLY_API_KEY_PROD3"))
+# Pull the data list 
+#data <- board3 %>% pins::pin_read("M197190/gmror2261_data")
+# Pull out each data piece individually 
+#ptrax <- data[[1]]
+#pt_char <- data[[2]]
+
+
+#---------------------------------- Data Transformations --------------------------------
+
+# Hopefully the majority of these are done in the data prep file because these will slow down the speed of your application and load times. 
+data <- data_import %>% 
+  mutate(tx_start_dt = as.Date(tx_start_dt), 
+         tx_end_dt = as.Date(tx_end_dt),
+         enroll_dt = as.Date(enroll_dt),
+         lfu_dt = as.Date(lfu_dt),
+         fu_yrs = as.numeric(lfu_dt-tx_end_dt)/365.25,
+         mo3_due = mo3_dt + mo3_due_days,
+         mo6_due = mo6_dt + mo6_due_days
+         )   
+  
+# Additional code here
+
+
+```
+
+
+About
+======================================================================
+    
+ 
+ 
+Inputs {.sidebar data-width=110}
+---------------------------------------
+
+[Contacts](#contacts)
+
+[Enrollment](#enroll)
+
+[Purpose of Study](#purp)
+
+[Stopping Rules](#stop_rul)
+
+[Test Schedule](#test_sched)
+
+[Data Cleaning](#data_clean) 
+
+
+Row
+-----------------------------------------------------------------------
+
+    
+#### __PROTOCOL ID - Add Study Title Here__  
+
+
+<div id="contacts"> <h4> **Contacts** </h4></div>
+
+__Study Chair:__ Dr. X  &  Dr. Y \      
+__Statistician:__ Jane Doe \      
+__SP:__ John Doe \      
+__Research Protocol Specialist:__ Person 1 \      
+__Sites:__ ARZ, FLA, RST \       
+__Coordinators__: Person 2 (ARZ), Person 3 (FLA), Person 4 (RST)      
+
+
+
+<a href="https://researchprotocolcatalog.mayo.edu/details/2022-308704-U/detail" target="_blank">Link to Protocol</a>
+
+__Definitions:__ \
+Eligible = Meets entry criteria for the study \
+Enrolled = signed consent (patient in Ptrax) \
+Screen Fail = signed consent but did not meet all eligibility criteria or pt dropped out prior to being accrued/registered \
+Accrued = met all eligibility criteria and are registered to the trial (accrued, registered, randomized are all synonymous for this trial) (patient in Rave and Ptrax) \
+Evaluable = received any radiation treatment (varies with each endpoint)  \
+Cancel = patient was registered and randomized but withdrew prior to receiving any radiation treatment. \ 
+
+
+
+
+<div id="enroll"> <h4> **Enrollment** </h4></div>
+
+__Status__:	Activated   
+__First Enrollment Date:__ 01/04/2022 
+
+__Projected Number of Patients__:	75         
+__Current Accrual__: `r n_distinct(data$case)`         
+__Withdrawals__: 3         
+
+It is also good to list the number of patients within each dataset/database. For example if the number of patients in PTRAX, RAVE, REDCap and from the RegApp. 
+
+<hr>
+
+<div id="purp"> <h4> **Purpose of Study** </h4></div>
+
+**Primary:** \     
+This is a great place to describe your study or copy and paste key information straight from the study protocol. 
+
+**Secondary:** \           
+This is where you will copy the secondary goals/aims of the study from the protocol.        
+1. Secondary aim 1.     
+2. Secondary aim 2.     
+3. Secondary aim 3.     
+4. Secondary aim 4.     
+
+
+<div id="stop_rul"> <h4> **Stopping Rules** </h4></div>
+
+Example stopping rule. Both acute and late toxicity will be monitored continuously as each patient is accrued and follow-up data are accumulated. Accrual will be temporarily suspended to this study if at any time we observe adverse events that satisfy any of the following criteria for each treatment arm separately: 
+
+* If at any point 20% of patients registered experience a grade 3+ at least possibly related to radiation treatment AEs. 
+
+
+
+<div id="test_sched"> <h4> **Test Schedule** </h4></div>
+
+Please put the picture here of the test schedule. 
+
+
+
+<div id="data_clean"> <h4> **Data Cleaning** </h4></div>
+
+None right now but these will be study specific and list data completion problems based on the test schedule. 
+    
+
+Cohort  
+======================================================================  
+
+Inputs {.sidebar}   
+---------------------------------------   
+ 
+<hr>    
+    
+__Use filters below to subset cohort based on their enrollment date.__  
+
+```{r, message=FALSE, echo=FALSE}
+
+#---------------- Insert Shiny Filters ----------------------
+
+# Filter by Enrollment Date
+
+# Stor min and max dates as objects
+min_enroll <- min(data$enroll_dt)
+max_enroll <- max(data$enroll_dt)
+
+sliderInput(inputId = "enroll_date",
+            label = "Enrollment Date", 
+            min = min_enroll,
+            max = max_enroll,value = c(min_enroll, max_enroll))
+
+radioButtons(inputId = "site_filter",label="Site",choices=c("All","ARZ","FLA","RST"),
+             selected="All")
+
+site_list <- reactive({
+  if(!is.na(input$site_filter) & length(input$site_filter)==1 & input$site_filter!="All"){
+      c(input$site_filter)
+    } else if (is.na(input$site_filter) | input$site_filter=="All") {
+      c("ARZ","FLA","RST")
+    } else {
+      c("ARZ","FLA","RST")
+    }
+})
+
+#print(input$site_filter)
+
+```
+
+Row  {data-height="200"}  
+-----------------------------------------------------------------------  
+
+### __Overall Accrual__
+
+```{r}
+#---- Enrollment counts for all arms
+
+ # Count the number of distinct IDs
+a <- as.numeric(length(unique(data$case)))
+gauge(
+  a,
+  min = 0,
+  max = 75, # This is the project enrollment for the study. 
+  abbreviate = FALSE,
+  sectors = gaugeSectors(success = c(0, 75),
+                         colors = c("#181818"))
+)
+
+```
+
+### Arm 1
+
+```{r, message=FALSE, echo=FALSE}
+#---- Arm 1 enrollment  
+
+renderValueBox({
+# filter for Arm 1 cases only
+# Count the number of distinct IDs
+arm1_n <- data %>% filter(arm == "A: IFL",
+                          enroll_dt >= input$enroll_date[1],
+                          enroll_dt <= input$enroll_date[2],
+                          site %in% site_list()) %>% with(n_distinct(case))
+# Create Value box
+valueBox(value = arm1_n, 
+         caption = "A: IFL", 
+         color = "#9dc6e0")
+})
+
+```
+
+### Arm 2
+
+```{r}
+#---- Arm 2 enrollment  
+
+renderValueBox({
+# filter for Arm 2 cases only
+# Count the number of distinct IDs
+arm2_n <- data %>% filter(arm == "F: FOLFOX",
+                          enroll_dt >= input$enroll_date[1],
+                          enroll_dt <= input$enroll_date[2],
+                          site %in% site_list()) %>% with(n_distinct(case))
+# Create Value box
+valueBox(value = arm2_n, 
+         caption = "F: FOLFOX", 
+         color = "#9dc6e0")
+})
+
+```
+
+### Arm 3
+
+```{r}
+#---- Arm 3 enrollment
+
+renderValueBox({
+# filter for Arm 3 cases only
+# Count the number of distinct IDs
+arm3_n <- data %>% filter(arm == "G: IROX",
+                          enroll_dt >= input$enroll_date[1],
+                          enroll_dt <= input$enroll_date[2],
+                          site %in% site_list()) %>% with(n_distinct(case))
+
+# Create Value box
+valueBox(value = arm3_n, 
+         caption = "G: IROX", 
+         color = "#9dc6e0")
+})
+
+```
+
+
+Row {data-height="600"}
+-----------------------------------------------------------------------  
+
+### Enrollment by Sex {data-width="500"}  
+```{r, echo=FALSE}
+renderPlotly({
+  
+plot_data <- data %>% filter(enroll_dt >= input$enroll_date[1],
+                enroll_dt <= input$enroll_date[2],
+                          site %in% site_list())
+ggplotly(ggplot(plot_data,aes(x=sex)) + 
+           geom_bar(stat="count",fill="#004c6d") +
+           ylab("Count") +
+           xlab("Sex") +
+           theme_minimal())
+})
+
+```
+
+### Enrollment by Age {data-width="500"}  
+```{r, echo=FALSE}
+
+renderPlotly({
+  plot_data <- data %>% filter(enroll_dt >= input$enroll_date[1],
+                  enroll_dt <= input$enroll_date[2],
+                          site %in% site_list())
+  
+ ggplotly(ggplot(plot_data, aes(x=arm, y=age,fill=arm)) +
+            geom_boxplot() + 
+            scale_fill_manual(values = c("#003f5c","#bc5090","#ffa600")) +
+            theme_bw() + 
+            ylab("Age at Enrollment (yrs)") +
+            xlab("Treatment Arm") +
+            labs(fill = "Arm") +
+            theme())
+  
+})
+
+```
+
+
+Row {data-height="600"}
+-----------------------------------------------------------------------  
+
+### **Enrollment Rate** {data-width=40}
+Not interact-able. 
+```{r, echo=FALSE}
+
+
+data <- data %>% 
+  arrange(enroll_dt) %>% 
+  mutate(
+    id=1:length(unique(data$case))) #this was causing issues, so changed it to 1:18 directly. 
+
+expected1 <-
+  data.frame(
+    time = c(as.Date("2022-01-01",format="%Y-%m-%d"),as.Date("2022-07-01",format="%Y-%m-%d")),
+    expected=c(0,75)
+  )
+
+plot <- plot_ly(
+  data=data,x=~enroll_dt,y=~id,mode="lines+markers",
+  type="scatter",name="Cumulative"
+  ) %>% layout(
+    xaxis=list(title="Time", 
+               range=c(min(data$enroll_dt,na.rm=T)-5,max(data$enroll_dt,na.rm=T)+10),
+               tickangle = 45),
+    yaxis=list(title="Cumulative",range=c(0,length(unique(data$id)) + 1)),
+    title="Accrual Over Time"
+  ) %>%
+  add_trace(data=expected1,x=~time,y=~expected,type="scatter",
+            line=list(dash="dot"),name="Predicted")
+
+plot
+```
+
+### **Descriptive Statistics** {data-width=60}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+#----------------------------------
+#------- Table of counts by arm
+#----------------------------------
+
+mycontrols <- tableby.control(test=FALSE,total=TRUE,
+																numeric.test="kwt",cat.test="fe",
+																numeric.stats=c("Nmiss","meansd","median","q1q3","range"),
+																cat.stats=c("countpct","Nmiss"),
+																stat.labels=list(Nmiss="Missing",meansd="Mean (SD)",
+																median="Median",q1q3="Q1,Q3",range="Range"))
+
+labels(data) <-
+      c(arm = "Arm",site="Site",age="Age",sex= "Sex",race="Race",wt="Weight",ht="Height",
+        modality = "Modality",dose="Dose (units)",frac="No. of Fractions")
+
+
+renderTable({
+  data <- data %>% filter(enroll_dt >= input$enroll_date[1],
+                enroll_dt <= input$enroll_date[2],
+                          site %in% site_list())
+  as.data.frame(summary(tableby(arm ~ site + age + sex + race + wt + ht + modality + 
+                                  dose + frac,data=data,control=mycontrols),text="html"))
+},sanitize.text.function = function(x) x)
+
+#tab1 <-
+#  summary(
+#    tableby(
+#      arm ~ site + age + sex + race + wt + ht + modality + dose + frac,
+#      data = data,
+#      control = mycontrols
+#    ),
+#    text = T
+#  )
+#
+#tab1
+
+```
+
+
+
+Adverse Events  
+======================================================================
+
+
+Inputs {.sidebar data-width=350}
+-----------------------------------
+
+Number of patients that have experienced at least 3 + AE that was possibly related to the radiation therapy.
+
+This definition was listed in the stopping rules of the protocol.
+
+
+__ALL:__ 3 out of 66 pts       
+__Arm 1 / A: IFL:__ 1 out of 21 pts       
+__Arm 2 / F: FOLFOX:__ 2 out of 30 pts      
+__Arm 3 / G: IROX:__ 0 out of 15 pts      
+
+
+
+```{r}
+# This is just can example button of how we can have downloadablle reports right in the dashboard. My recommendation would be to only have a downloadable report when absolutely necessary. 
+actionButton("ae_report","Download AE Report")
+
+
+```
+
+Row
+----------------------------------------------------------------------
+
+### All
+```{r, message=FALSE, echo=FALSE}
+#---- All  
+renderValueBox({
+  
+valueBox(value = scales::percent(0.04545), # Right now this value is hard coded be sure to make it interactive with your data. Count percentage of patients that meet the stopping rules. 
+         caption = "ALL", 
+         color = "#487190")
+
+})
+
+```
+
+
+### Arm 1
+
+```{r, message=FALSE, echo=FALSE}
+#---- Arm 1 enrollment  
+
+renderValueBox({
+# filter for Arm 1 cases only
+# Count the number of distinct IDs
+# Create Value box
+valueBox(value = scales::percent(0.04762), # Right now this value is hard coded be sure to make it interactive with your data. Count percentage of patients that meet the stopping rules within the arm. 
+         caption = "A: IFL", 
+         color = "#89BADF")
+})
+
+```
+
+### Arm 2
+
+```{r, message=FALSE, echo=FALSE}
+#---- Arm 2 enrollment  
+
+renderValueBox({
+# filter for Arm 2 cases only
+# Count the number of distinct IDs
+# Create Value box
+valueBox(value = scales::percent(0.06667), # Right now this value is hard coded be sure to make it interactive with your data. Count percentage of patients that meet the stopping rules within the arm. 
+         caption = "F: FOLFOX", 
+         color = "#89BADF")
+#valueBox(scales::percent(0.231), icon = "fa-line-chart",col="orange")
+
+})
+
+```
+
+
+### Arm 3
+
+```{r, message=FALSE, echo=FALSE}
+#---- Arm 3 enrollment  
+
+renderValueBox({
+# filter for Arm 3 cases only
+# Count the number of distinct IDs
+# Create Value box
+valueBox(value = scales::percent(0.0),  # Right now this value is hard coded be sure to make it interactive with your data. Count percentage of patients that meet the stopping rules within the arm. 
+         caption = "G: IROX", 
+         color = "#89BADF")
+#valueBox(scales::percent(0.231), icon = "fa-line-chart",col="orange")
+
+})
+
+```
+
+
+Row {data-height=800 .tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### <strong>Frequency Table</strong>
+
+```{r,context='server'}
+# Filter to graded AEs and count them and spread them to match the table that is used in the DSMB. 
+tox_tbl <- ae %>% filter(Grade>0) %>% count(Time, Toxicity, Grade) %>% 
+  spread(Grade,n)
+
+#merge an empty table with full col names
+temp_table <- setNames(data.frame(matrix(ncol = 7, nrow = 0)), c('Time', 'Toxicity', '1', '2', '3', '4','5')) %>% 
+  mutate(Time=as.character(),Toxicity=as.character())
+tox_tbl_wide <- bind_rows(tox_tbl, temp_table) %>% 
+  select(Time, Toxicity, `Grade 1` = `1`, `Grade 2` = `2`, `Grade 3` = `3`, `Grade 4` = `4`,`Grade 5` = `5`) %>% 
+  mutate_all(funs(as.character))
+
+
+# The datatable function allows you to quickly display the data and allow users to filter the data, export and sort the data. 
+datatable(
+  tox_tbl_wide,
+  rownames = FALSE,
+  filter = 'top',
+  options = list(
+    dom="Bfrtip",buttons=c('copy','csv','excel','pdf'),
+    columnDefs = list(
+      list(className = 'dt-center', targets = 2:6),
+      list(searchable = FALSE, targets = 2:6)
+    ),
+    sDom  = '<"top">rt<"bottom">i',
+    "pageLength" = length(tox_tbl_wide$Time)
+  )
+)
+
+```
+
+
+### <strong>All AEs</strong>
+
+```{r, echo=FALSE, context='server'}
+
+datatable(
+  ae %>% arrange(desc(Grade)),colnames=c("Case","Time","Toxicity","Grade","Attribution","Date"),
+  rownames = FALSE,
+  filter = 'top',
+  options = list(
+    dom="Bfrtip",buttons=c('copy','csv','excel','pdf'),
+    #columnDefs = list(
+    #  list(className = 'dt-center', targets = 2:6),
+    #  list(searchable = FALSE, targets = 2:6)
+    #),
+    sDom  = '<"top">rt<"bottom">i',
+    "pageLength" = length(ae$Case)
+  )
+)
+
+```
+
+### <strong>AE Completion</strong>
+
+```{r, echo=FALSE, context="server"}
+#------- AE Completion  
+
+# Select the columns we want to show in our table
+ae_table <- data %>% mutate(mo12=mo6) %>% 
+  mutate(
+    mo3 = case_when(
+      mo3 == "Complete" ~ "<p><span class = 'glyphicon glyphicon-ok' style='color:#2ECC71'><span style='color: #2ECC71;'>Completed</span></p>",
+      mo3 == "Overdue" ~ as.character(glue::glue("<p><span style='color: #E74C3C;'><span class='glyphicon glyphicon-remove' style='color:#E74C3C'></span>Overdue ended {mo3_due}</span></p>")),
+      mo3 == "Scheduled" ~ as.character(glue::glue("<p><span class='glyphicon glyphicon-hourglass' style='color:#E8C838'></span><span style='color: #E8C838'>Scheduled (ends {mo3_due})</span></p>")),
+      mo3 == "Waiting Treatment" ~ "Patient did not receive tx",
+      TRUE ~ NA_character_
+    ),
+    mo6 = case_when(
+      mo6 == "Complete" ~ "<p><span class = 'glyphicon glyphicon-ok' style='color:#2ECC71'><span style='color: #2ECC71;'>Completed</span></p>",
+      mo6 == "Overdue" ~ as.character(glue::glue("<p><span style='color: #E74C3C;'><span class='glyphicon glyphicon-remove' style='color:#E74C3C'></span>Overdue ended {mo6_due}</span></p>")),
+      mo6 == "Scheduled" ~ as.character(glue::glue("<p><span class='glyphicon glyphicon-hourglass' style='color:#E8C838'></span><span style='color: #E8C838'>Scheduled (ends {mo6_due})</span></p>")),
+      mo6 == "Waiting Treatment" ~ "Patient did not receive tx",
+      TRUE ~ NA_character_
+    ),
+    # I have no dates for 12 months so I will just use 6 months as place holder text
+    mo12 = case_when(
+      mo12 == "Complete" ~ "<p><span class = 'glyphicon glyphicon-ok' style='color:#2ECC71'><span style='color: #2ECC71;'>Completed</span></p>",
+      mo12 == "Overdue" ~ as.character(glue::glue("<p><span style='color: #E74C3C;'><span class='glyphicon glyphicon-remove' style='color:#E74C3C'></span>Overdue ended {mo6_due}</span></p>")),
+      mo12 == "Scheduled" ~ as.character(glue::glue("<p><span class='glyphicon glyphicon-hourglass' style='color:#E8C838'></span><span style='color: #E8C838'>Scheduled (ends {mo6_due})</span></p>")),
+      mo12 == "Waiting Treatment" ~ "Patient did not receive tx",
+      TRUE ~ NA_character_
+    )
+  ) %>% select(case,site, arm, tx_start_dt, tx_end_dt, mo3, mo6, mo12)
+
+
+datatable(ae_table,
+  colnames = c("Case" = "case",
+               "Site" = "site",
+               "Treatment Arm" = "arm",
+               "Treatment Start" = "tx_start_dt",
+               "Treatment End" = "tx_end_dt",
+               "Month 3" = "mo3",
+               "Month 6" = "mo6",
+               "Month 12" = "mo12"),
+  extensions = 'Buttons',escape = F,
+  rownames = F,
+  filter = list(
+    position = 'top', clear = FALSE, plain = TRUE),
+  options = list(dom = 'Bfrtip',
+                 buttons = list(
+                   list(extend = "excel", text = "Download Table", filename = "export",
+                        exportOptions = list(
+                          modifier = list(page = "all"),
+                          orthogonal = "export"))),
+                 pageLength = nrow(ae_table)))
+
+```
+
+Surveys  
+======================================================================
+
+Row  {data-height="200"}
+-----------------------------------------------------------------------  
+
+### __Baseline Completion__
+```{r}
+ # Count the number of distinct IDs
+baseline <- data %>% filter(bsl == "Complete")          
+baseline_n <- length(unique(baseline$case))
+
+gauge(value = baseline_n,
+      min = 0, 
+      max = length(unique(data$case)), 
+      label = "Baseline Survey",
+      gaugeSectors(success = c(0, length(unique(data$case)))))
+
+```
+
+### __Month 3 Completion__
+```{r}
+ # Count the number of distinct IDs
+mo3 <- data %>% filter(mo3 == "Complete")               
+mo3_n <- length(unique(mo3$case))
+
+gauge(value = mo3_n,
+      min = 0, 
+      max = length(unique(data$case)), 
+      label = "Month 3",
+      gaugeSectors(success = c(60, length(unique(data$case))), 
+                   warning = c(40, 59), 
+                   danger = c(0, 39)))
+
+```
+
+### __Month 6 Completion__
+```{r}
+ # Count the number of distinct IDs
+mo6 <- data %>% filter(mo6 == "Complete")  %>% count(case)                
+mo6_n <- length(unique(mo6$case))
+gauge(value = mo6_n,
+      min = 0, 
+      max = length(unique(data$case)), 
+      label = "Month 6",
+      gaugeSectors(success = c(60, length(unique(data$case))), 
+                   warning = c(40, 59), 
+                   danger = c(0, 39)))
+
+```
+
+
+
+Row  {data-height="800"}  
+-----------------------------------------------------------------------  
+
+### Survey Completion Table
+
+```{r, echo=FALSE, context="server"}
+#------- Survey Completion  
+
+# Here is another example of how the completion rate can be shown with formattable
+# Select the columns we want to show in our table
+survey_table <- data %>% select(case, arm, tx_start_dt, tx_end_dt, bsl, mo3, mo6)
+
+as.datatable(formattable(survey_table, list(
+  bsl = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(bsl, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), bsl)),
+    mo3 = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(mo3, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), mo3)),
+      mo6 = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(mo6, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), mo6)))),
+  colnames = c("Case" = "case",
+               "Treatment Arm" = "arm",
+               "Treatment Start" = "tx_start_dt",
+               "Treatment End" = "tx_end_dt",
+               "Baseline Survey" = "bsl",
+               "Month 3" = "mo3",
+               "Month 6" = "mo6"),
+  extensions = 'Buttons',
+  rownames = T,
+  filter = list(
+    position = 'top', clear = FALSE, plain = TRUE),
+  options = list(dom = 'Bfrtip',
+                 buttons = list(
+                   list(extend = "excel", text = "Download Table", filename = "export",
+                        exportOptions = list(
+                          modifier = list(page = "all"),
+                          orthogonal = "export"))),
+                 pageLength = nrow(survey_table)))
+
+```
+
+
+Follow-up   
+======================================================================
+
+Row {data-height="100"}
+----------------------------------------------------------------------
+
+### 1 year FU
+
+```{r, message=FALSE, echo=FALSE}
+renderValueBox({
+valueBox(value = scales::percent(length(which(data$fu_yrs>=1))/66), 
+         caption = "No. of Pts who reach primary endpoint", 
+         color = "#487190")
+#valueBox(scales::percent(0.231), icon = "fa-line-chart",col="orange")
+
+})
+
+```
+
+
+### 1 yr post tx 
+```{r}
+# Typically these tables will be study specific because the endpoints will be specific to the trial. 
+
+gauge(value = length(which(data$fu_yrs>=1)),
+      min = 0, 
+      max = length(unique(data$case)), 
+      label = "",
+      gaugeSectors(success = c(0, length(unique(data$case)))))
+
+```
+
+### Death
+
+```{r, message=FALSE, echo=FALSE}
+
+renderValueBox({
+# filter for Arm 1 cases only
+# Count the number of distinct IDs
+
+# Create Value box
+valueBox(value = length(which(data$death==1)), 
+         caption = "No. of Deaths", 
+         color = "#9dc6e0")
+})
+
+```
+
+
+
+### Recurrences
+
+```{r, message=FALSE, echo=FALSE}
+
+renderValueBox({
+# filter for Arm 1 cases only
+# Count the number of distinct IDs
+
+# Create Value box
+valueBox(value = length(which(data$recur==1)), 
+         caption = "No. of Pts with Recurrence", 
+         color = "#9dc6e0")
+})
+
+```
+
+Row  {data-height="800"}  
+-----------------------------------------------------------------------  
+
+### Follow-up Completion
+
+```{r, echo=FALSE, context="server"}
+#------- Survey Completion  
+
+# Select the columns we want to show in our table
+survey_table <- data %>% mutate(mo12=mo6) %>% select(case,site, arm, tx_start_dt, tx_end_dt, mo3, mo6, mo12)
+
+as.datatable(formattable(survey_table, list(
+  mo3 = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(mo3, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), mo3)),
+      mo6 = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(mo6, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), mo6)),
+      mo12 = formatter("span", style = x ~ ifelse(x %in% c("Complete"), 
+                                               style(color = "green", 
+                                               font.weight = "bold"), 
+                                                  ifelse(x %in% c("Overdue"),
+                                                        style(color = "#d35e60", 
+                                                        font.weight = "bold"), 
+                                                  ifelse(x == "Waiting Treatment", 
+                                                         style(color = "#FFAA00", 
+                                                               font.weight = "bold"), NA))),
+                     ~ icontext(sapply(mo12, function(x) if (x %in% c("Complete")) "ok" 
+                                       else if (x %in% c("Overdue")) "remove"
+                                       else if (x == "Waiting Treatment") "alert" else ""), mo12))
+  )),
+  colnames = c("Case" = "case",
+               "Site" = "site",
+               "Treatment Arm" = "arm",
+               "Treatment Start" = "tx_start_dt",
+               "Treatment End" = "tx_end_dt",
+               "Month 3" = "mo3",
+               "Month 6" = "mo6",
+               "Month 12" = "mo12"),
+  extensions = 'Buttons',
+  rownames = T,
+  filter = list(
+    position = 'top', clear = FALSE, plain = TRUE),
+  options = list(dom = 'Bfrtip',
+                 buttons = list(
+                   list(extend = "excel", text = "Download Table", filename = "export",
+                        exportOptions = list(
+                          modifier = list(page = "all"),
+                          orthogonal = "export"))),
+                 pageLength = nrow(survey_table)))
+
+```
+
+
+Data Cleaning  
+======================================================================
+
+Row  {data-height="100"}
+-----------------------------------------------------------------------  
+
+### Waiting on Treatment
+
+```{r,echo=F,results='asis'}
+
+# This code filters to the data to the error of interest and the selecting the variable that may help with this error. 
+# The variables included will be patient identifiers including clinic number, raveid, etc. and anything that helps with finding why the patient may have that error. 
+# Then we pipe the kable functions to print the data in a nice table and label the columns accordingly 
+a <- data %>%
+  filter(is.na(tx_end_dt)) %>%
+  select(case,arm,site,enroll_dt,tx_start_dt,tx_end_dt) %>%
+  kable(escape=F,col.names=c("Subject","Arm","Site","Enrollment Date","Treatment Start Date","Treatment End Date")) %>% kable_styling()
+a
+```
+
+
+### Fractions under 5
+
+```{r,echo=F,results='asis'}
+a <- data %>%
+  filter(frac<5) %>%
+  select(case,arm,site,enroll_dt,tx_end_dt,modality,dose,frac) %>%
+  kable(escape=F,col.names=c("Subject","Arm","Site","Enrollment Date","Treatment End Date","Modality","Dose","Fractions")) %>% kable_styling()
+a
+```
+
+
+Row  {data-height="200"}
+----------------------------------------------------------------------- 
+
+Add as many data cleaning that is required for the protocol. Typically this is checked every six months by the statistics team to add or subtract data cleaning options. This is crucial at the end of the after all patients have been followed to the primary endpoint. 
+
+
+<!-- ----------------------------------------------------------------------------------- -->
+<!-- ----------------------------------------------------------------------------------- -->
+<!-- CSS - Control colors / style of the R Markdown file you can ignore unless you have a specific request to change the look/feel of the dashboard. -->
+
+<style>                     
+.navbar-inverse {
+    background-color: #ffffff; /******** navbar background color*/
+        border-color: #282828; /******** navbar border color*/
+}
+
+.navbar-inverse .navbar-brand {
+    color: #000000;
+}
+
+.navbar-inverse .navbar-brand:hover,
+.navbar-inverse .navbar-brand:focus {
+    color:  #0d0d0d;
+        background-color: transparent;
+}
+
+.navbar-inverse .navbar-text {
+    color: #777;
+}
+
+.navbar-inverse .navbar-nav > li > a {
+    color: #777;
+}
+
+.navbar-inverse .navbar-nav > li > a:hover,
+.navbar-inverse .navbar-nav > li > a:focus {
+    color: #0d0d0d;
+        background-color: transparent;
+}
+
+.navbar-inverse .navbar-nav > .active > a,
+.navbar-inverse .navbar-nav > .active > a:hover,
+.navbar-inverse .navbar-nav > .active > a:focus {
+    color: #555;
+        background-color: #FFFFFF;   /********* tab background color*/
+}
+
+body {
+    padding-top: 60px;
+    background: #ffffff;  /********* body background color*/
+}
+
+.section.sidebar {
+    top: 51px;
+    
+/* background-color: #f5f5f5; */
+    background-color: #ffffff;  /********* sidebar background color*/
+    border-color: transparent;  
+}
+
+.value-box {
+    color: #ffffff;     /********* valuebox text color*/
+}
+
+.bg-primary {
+    background-color: #16314b; /********* valuebox background color*/
+}
+
+</style>
+    
