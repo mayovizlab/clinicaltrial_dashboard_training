@@ -46,7 +46,7 @@ ae <- read.xlsx("./data/data.xlsx",sheet=2,detectDates=T)
 #board3 <- pins::board_connect(server = "link to server",
 #                             key = Sys.getenv("name of API Key"))
 # Pull the data list 
-#data <- board3 %>% pins::pin_read("M197190/gmror2261_data")
+#data <- board3 %>% pins::pin_read("lanid/data_name")
 # Pull out each data piece individually 
 #ptrax <- data[[1]]
 #pt_char <- data[[2]]
