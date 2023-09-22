@@ -36,9 +36,9 @@ library(arsenal)
 #---------------------------------- Data Import ----------------------------------------
 
 # For the example we are using 
-data_import <- read.xlsx("./data/data.xlsx",sheet=1,detectDates=T)
+data_import <- read.xlsx("./data.xlsx",sheet=1,detectDates=T)
 
-ae <- read.xlsx("./data/data.xlsx",sheet=2,detectDates=T)
+ae <- read.xlsx("./data.xlsx",sheet=2,detectDates=T)
 
 ## Here is a code example that could be used when saving the data in pin 
 # Saving your data as a pin allows you to update the data without having to republish the dashboard each time. 
