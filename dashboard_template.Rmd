@@ -40,15 +40,11 @@ data_import <- read.xlsx("./data/data.xlsx",sheet=1,detectDates=T)
 
 ae <- read.xlsx("./data/data.xlsx",sheet=2,detectDates=T)
 
-#data_import <- read.xlsx("/projects/ccsstat/radonc/admin/shared_code/r/templates/dashboard_rmd_flexdashboard/data/data.xlsx",sheet=1,detectDates=T)
-#ae <- read.xlsx("/projects/ccsstat/radonc/admin/shared_code/r/templates/dashboard_rmd_flexdashboard/data/data.xlsx",sheet=2,detectDates=T)
-
-
 ## Here is a code example that could be used when saving the data in pin 
 # Saving your data as a pin allows you to update the data without having to republish the dashboard each time. 
 # First connect to the board/server where the data and dashboard lives
-#board3 <- pins::board_connect(server = "https://hsr-rsc-prod3.mayo.edu:1919/",
-#                             key = Sys.getenv("MOLLY_API_KEY_PROD3"))
+#board3 <- pins::board_connect(server = "link to server",
+#                             key = Sys.getenv("name of API Key"))
 # Pull the data list 
 #data <- board3 %>% pins::pin_read("M197190/gmror2261_data")
 # Pull out each data piece individually 
